@@ -2,46 +2,61 @@ import sys
 import os
 import time
 
+
 def DirectoryScanner(DirectoryPath):
-    
+
+    # Validate the directory path
+    if not os.path.isdir(DirectoryPath):
+        print("Error: The specified directory does not exist.")
+        return
+
+    # Generate a unique log file name using the current timestamp
     timestamp = time.ctime()
-    LogFileName = "Marvellous%s.log"%(timestamp)
-    LogFileName = LogFileName.replace(" ","_")                          # it replaces space with underscore in file name
-    LogFileName = LogFileName.replace(":","_")
+    LogFileName = "Marvellous%s.log" % (timestamp)
 
-    print("Log file gets created with name : ",LogFileName)
+    LogFileName = LogFileName.replace(" ", "_")
+    LogFileName = LogFileName.replace(":", "_")
 
-    fobj = open(LogFileName,"w")
-    
+    print("Log file gets created with name:", LogFileName)
+
+    fobj = open(LogFileName, "w")
+
     fobj.write("Marvellous Automation Script\n")
+    fobj.write("Files from the directory are:\n")
 
-    fobj.write("Files from the directory are : \n")
-
-    for FolderName , SubFolder , FileName in os.walk(DirectoryPath):
-        for fname in FileName : 
-            fobj.write(fname+"\n")
+    # Traverse the directory and its subdirectories
+    for FolderName, SubFolder, FileName in os.walk(DirectoryPath):
+        for fname in FileName:
+            fobj.write(fname + "\n")
 
     fobj.close()
 
+
 def main():
-    Border = "-"*70
+
+    Border = "-" * 70
+
     print(Border)
     print("Marvellous Automation Script")
     print(Border)
 
-    if (len(sys.argv) == 2):
-        if(sys.argv[1] == "--h" or sys.argv[1] == "--H"):
-            print("This automation script is used to travel the directory")
-            print("For better usage please check --u flag")
-        elif(sys.argv[1] == "--u" or sys.argv[1] == "--U"):
-            print("Please execute the script as ")
-            print("python FileName.py DirectoryName")
-            print("Directory name should be absolute path")
+    if len(sys.argv) == 2:
+
+        if sys.argv[1] in ("--h", "--H"):
+            print("This automation script is used to traverse a directory.")
+            print("For better usage, please check the --u flag.")
+
+        elif sys.argv[1] in ("--u", "--U"):
+            print("Please execute the script as:")
+            print("python directory_scanner.py DirectoryName")
+            print("Directory name should be a valid directory path.")
+
         else:
             DirectoryScanner(sys.argv[1])
+
     else:
-        print("Invalid number of arguments")
-        print("Please use --h or --u for more information")
+        print("Invalid number of arguments.")
+        print("Please use --h or --u for more information.")
 
     print(Border)
     print("Thank you for using Marvellous Automation Script")
