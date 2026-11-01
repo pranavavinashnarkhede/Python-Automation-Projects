@@ -10,32 +10,48 @@ def DirectoryScanner(DirectoryPath):
         print("Error: The specified directory does not exist.")
         return
 
-    # Generate a unique log file name
-    timestamp = time.ctime()
-    LogFileName = "Marvellous%s.log" % (timestamp)
-
-    LogFileName = LogFileName.replace(" ", "_")
-    LogFileName = LogFileName.replace(":", "_")
+    # Generate a timestamp-based log filename
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+    LogFileName = "DirectoryScan_%s.log" % (timestamp)
 
     print("Log file gets created with name:", LogFileName)
 
-    fobj = open(LogFileName, "w")
+    fobj = open(LogFileName, "w", encoding="utf-8")
 
     fobj.write("Marvellous Automation Script\n")
-    fobj.write("Files from the directory are:\n")
+    fobj.write("Directory: " + os.path.abspath(DirectoryPath) + "\n")
+    fobj.write("=" * 70 + "\n\n")
+    fobj.write("Files found:\n\n")
 
     TotalFiles = 0
 
     # Traverse the directory and its subdirectories
     for FolderName, SubFolder, FileName in os.walk(DirectoryPath):
-        for fname in FileName:
-            fobj.write(fname + "\n")
-            TotalFiles = TotalFiles + 1
 
+        for fname in FileName:
+
+            FilePath = os.path.join(FolderName, fname)
+
+            try:
+                FileSize = os.path.getsize(FilePath)
+
+                fobj.write("File Name: " + fname + "\n")
+                fobj.write("File Path: " + os.path.abspath(FilePath) + "\n")
+                fobj.write("File Size: " + str(FileSize) + " bytes\n")
+                fobj.write("-" * 70 + "\n")
+
+                TotalFiles += 1
+
+            except OSError as e:
+                print("Unable to access file:", FilePath)
+                print("Error:", e)
+
+    fobj.write("\nTotal Files Found: " + str(TotalFiles) + "\n")
     fobj.close()
 
     print("Directory scanning completed successfully.")
     print("Total files found:", TotalFiles)
+    print("Log file saved as:", LogFileName)
 
 
 def main():
@@ -49,13 +65,13 @@ def main():
     if len(sys.argv) == 2:
 
         if sys.argv[1] in ("--h", "--H"):
-            print("This automation script is used to traverse a directory.")
-            print("For better usage, please check the --u flag.")
+            print("This automation script is used to scan a directory.")
+            print("For usage instructions, please use the --u flag.")
 
         elif sys.argv[1] in ("--u", "--U"):
-            print("Please execute the script as:")
-            print("python directory_scanner.py DirectoryName")
-            print("Directory name should be a valid directory path.")
+            print("Usage:")
+            print("python directory_scanner.py DirectoryPath")
+            print("Provide a valid directory path.")
 
         else:
             DirectoryScanner(sys.argv[1])
