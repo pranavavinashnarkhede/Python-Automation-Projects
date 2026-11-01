@@ -3,6 +3,43 @@ import os
 import time
 
 
+def GetFileExtension(FileName):
+    """Return the extension of a file."""
+
+    Extension = os.path.splitext(FileName)[1].lower()
+
+    if Extension == "":
+        Extension = "No Extension"
+
+    return Extension
+
+
+def DisplayExtensionStatistics(DirectoryPath, LogFileName):
+    """Count files by extension and append statistics to the log."""
+
+    ExtensionCount = {}
+
+    for FolderName, SubFolder, FileName in os.walk(DirectoryPath):
+        for fname in FileName:
+            Extension = GetFileExtension(fname)
+
+            if Extension in ExtensionCount:
+                ExtensionCount[Extension] += 1
+            else:
+                ExtensionCount[Extension] = 1
+
+    with open(LogFileName, "a", encoding="utf-8") as fobj:
+
+        fobj.write("\n========== FILE EXTENSION STATISTICS ==========\n\n")
+
+        for Extension, Count in sorted(ExtensionCount.items()):
+            fobj.write(f"{Extension}: {Count} files\n")
+
+        fobj.write(f"\nUnique file extensions: {len(ExtensionCount)}\n")
+
+    print("File extension statistics added to the log.")
+
+
 def DirectoryScanner(DirectoryPath):
 
     # Validate the directory path
@@ -12,7 +49,7 @@ def DirectoryScanner(DirectoryPath):
 
     # Generate a timestamp-based log filename
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-    LogFileName = "DirectoryScan_%s.log" % (timestamp)
+    LogFileName = "DirectoryScan_%s.log" % timestamp
 
     print("Log file gets created with name:", LogFileName)
 
@@ -25,7 +62,7 @@ def DirectoryScanner(DirectoryPath):
 
     TotalFiles = 0
 
-    # Traverse the directory and its subdirectories
+    # Traverse the directory and record file information
     for FolderName, SubFolder, FileName in os.walk(DirectoryPath):
 
         for fname in FileName:
@@ -51,6 +88,10 @@ def DirectoryScanner(DirectoryPath):
 
     print("Directory scanning completed successfully.")
     print("Total files found:", TotalFiles)
+
+    # Add extension statistics to the log
+    DisplayExtensionStatistics(DirectoryPath, LogFileName)
+
     print("Log file saved as:", LogFileName)
 
 
