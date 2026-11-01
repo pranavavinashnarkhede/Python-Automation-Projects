@@ -10,7 +10,7 @@ def DirectoryScanner(DirectoryPath):
         print("Error: The specified directory does not exist.")
         return
 
-    # Generate a unique log file name using the current timestamp
+    # Generate a unique log file name
     timestamp = time.ctime()
     LogFileName = "Marvellous%s.log" % (timestamp)
 
@@ -24,12 +24,18 @@ def DirectoryScanner(DirectoryPath):
     fobj.write("Marvellous Automation Script\n")
     fobj.write("Files from the directory are:\n")
 
+    TotalFiles = 0
+
     # Traverse the directory and its subdirectories
     for FolderName, SubFolder, FileName in os.walk(DirectoryPath):
         for fname in FileName:
             fobj.write(fname + "\n")
+            TotalFiles = TotalFiles + 1
 
     fobj.close()
+
+    print("Directory scanning completed successfully.")
+    print("Total files found:", TotalFiles)
 
 
 def main():
