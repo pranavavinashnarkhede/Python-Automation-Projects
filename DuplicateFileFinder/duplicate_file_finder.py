@@ -1,6 +1,7 @@
 import sys
 import os
 import hashlib
+import time
 
 
 def CalculateCheckSum(FileName):
@@ -75,8 +76,58 @@ def FindDuplicate(DirectoryName):
     return Duplicate
 
 
+def GenerateDuplicateReport(DirectoryName, Result):
+    """Generate a report containing duplicate file information."""
+
+    # Generate a timestamp for the report filename
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+
+    ReportFileName = "DuplicateReport_%s.txt" % timestamp
+
+    TotalGroups = len(Result)
+    TotalDuplicates = 0
+
+    try:
+        # Create the report file
+        with open(ReportFileName, "w", encoding="utf-8") as fobj:
+
+            fobj.write("Duplicate File Finder Report\n")
+            fobj.write("Directory: " + os.path.abspath(DirectoryName) + "\n")
+            fobj.write("=" * 70 + "\n\n")
+
+            # Write each duplicate group
+            GroupCount = 1
+
+            for value in Result:
+
+                fobj.write("Duplicate Group " + str(GroupCount) + "\n\n")
+
+                # Display the first file as the original
+                fobj.write("Original File: " + value[0] + "\n")
+
+                # Display the remaining files as duplicates
+                for subvalue in value[1:]:
+                    fobj.write("Duplicate File: " + subvalue + "\n")
+                    TotalDuplicates += 1
+
+                fobj.write("-" * 70 + "\n\n")
+
+                GroupCount += 1
+
+            # Write final statistics
+            fobj.write("Total Duplicate Groups: " + str(TotalGroups) + "\n")
+            fobj.write("Total Duplicate Files: " + str(TotalDuplicates) + "\n")
+
+        print("Duplicate report generated successfully.")
+        print("Report saved as:", ReportFileName)
+
+    except OSError as e:
+        print("Unable to create duplicate report.")
+        print("Error:", e)
+
+
 def DeleteDuplicate(DirectoryName):
-    """Display duplicate files without deleting them."""
+    """Display duplicate files and generate a report."""
 
     # Find duplicate files
     MyDict = FindDuplicate(DirectoryName)
@@ -98,7 +149,15 @@ def DeleteDuplicate(DirectoryName):
             print("Duplicate found:", subvalue)
             TotalDuplicates += 1
 
+    print("Total duplicate groups found:", len(Result))
     print("Total duplicate files found:", TotalDuplicates)
+
+    # Generate a report containing duplicate information
+    if len(Result) > 0:
+        GenerateDuplicateReport(DirectoryName, Result)
+    else:
+        print("No duplicate files found.")
+        print("Report not generated.")
 
 
 def main():
