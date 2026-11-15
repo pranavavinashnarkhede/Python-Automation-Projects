@@ -33,7 +33,7 @@ def CalculateCheckSum(FileName):
 
 
 def FindDuplicate(DirectoryName):
-    """Find files having identical checksums."""
+    """Find duplicate files using file size and checksum."""
 
     # Check whether the specified path exists
     Ret = os.path.exists(DirectoryName)
@@ -49,8 +49,8 @@ def FindDuplicate(DirectoryName):
         print("It is not a directory")
         return None
 
-    # Store file checksums and their paths
-    Duplicate = {}
+    # Store file paths according to their sizes
+    FileSizeDict = {}
 
     # Traverse the directory and its subdirectories
     for FolderName, SubFolder, FileName in os.walk(DirectoryName):
@@ -60,18 +60,42 @@ def FindDuplicate(DirectoryName):
             # Generate the complete file path
             FilePath = os.path.join(FolderName, fname)
 
-            # Calculate the file checksum
-            Checksum = CalculateCheckSum(FilePath)
+            try:
+                # Get the size of the file
+                FileSize = os.path.getsize(FilePath)
 
-            # Skip files that could not be read
-            if Checksum is None:
-                continue
+                # Group files having the same size
+                if FileSize in FileSizeDict:
+                    FileSizeDict[FileSize].append(FilePath)
+                else:
+                    FileSizeDict[FileSize] = [FilePath]
 
-            # Group files having the same checksum
-            if Checksum in Duplicate:
-                Duplicate[Checksum].append(FilePath)
-            else:
-                Duplicate[Checksum] = [FilePath]
+            except OSError as e:
+                print("Unable to access file:", FilePath)
+                print("Error:", e)
+
+    # Store files according to their checksums
+    Duplicate = {}
+
+    # Process only file groups having more than one file
+    for FileSize, FileList in FileSizeDict.items():
+
+        if len(FileList) > 1:
+
+            for FilePath in FileList:
+
+                # Calculate checksum only for matching file sizes
+                Checksum = CalculateCheckSum(FilePath)
+
+                # Skip files that could not be read
+                if Checksum is None:
+                    continue
+
+                # Group files having the same checksum
+                if Checksum in Duplicate:
+                    Duplicate[Checksum].append(FilePath)
+                else:
+                    Duplicate[Checksum] = [FilePath]
 
     return Duplicate
 
@@ -152,7 +176,7 @@ def DeleteDuplicate(DirectoryName):
     print("Total duplicate groups found:", len(Result))
     print("Total duplicate files found:", TotalDuplicates)
 
-    # Generate a report containing duplicate information
+    # Generate a report if duplicates are found
     if len(Result) > 0:
         GenerateDuplicateReport(DirectoryName, Result)
     else:
