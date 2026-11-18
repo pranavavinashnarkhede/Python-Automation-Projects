@@ -35,17 +35,12 @@ def CalculateCheckSum(FileName):
 def FindDuplicate(DirectoryName):
     """Find duplicate files using file size and checksum."""
 
-    # Check whether the specified path exists
-    Ret = os.path.exists(DirectoryName)
-
-    if Ret == False:
+    # Validate the directory path
+    if not os.path.exists(DirectoryName):
         print("Path is invalid")
         return None
 
-    # Check whether the specified path is a directory
-    Ret = os.path.isdir(DirectoryName)
-
-    if Ret == False:
+    if not os.path.isdir(DirectoryName):
         print("It is not a directory")
         return None
 
@@ -57,7 +52,6 @@ def FindDuplicate(DirectoryName):
 
         for fname in FileName:
 
-            # Generate the complete file path
             FilePath = os.path.join(FolderName, fname)
 
             try:
@@ -74,20 +68,17 @@ def FindDuplicate(DirectoryName):
                 print("Unable to access file:", FilePath)
                 print("Error:", e)
 
-    # Store files according to their checksums
     Duplicate = {}
 
-    # Process only file groups having more than one file
+    # Calculate checksums only for matching file sizes
     for FileSize, FileList in FileSizeDict.items():
 
         if len(FileList) > 1:
 
             for FilePath in FileList:
 
-                # Calculate checksum only for matching file sizes
                 Checksum = CalculateCheckSum(FilePath)
 
-                # Skip files that could not be read
                 if Checksum is None:
                     continue
 
@@ -103,33 +94,29 @@ def FindDuplicate(DirectoryName):
 def GenerateDuplicateReport(DirectoryName, Result):
     """Generate a report containing duplicate file information."""
 
-    # Generate a timestamp for the report filename
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-
     ReportFileName = "DuplicateReport_%s.txt" % timestamp
 
     TotalGroups = len(Result)
     TotalDuplicates = 0
 
     try:
-        # Create the report file
         with open(ReportFileName, "w", encoding="utf-8") as fobj:
 
             fobj.write("Duplicate File Finder Report\n")
             fobj.write("Directory: " + os.path.abspath(DirectoryName) + "\n")
             fobj.write("=" * 70 + "\n\n")
 
-            # Write each duplicate group
             GroupCount = 1
 
             for value in Result:
 
                 fobj.write("Duplicate Group " + str(GroupCount) + "\n\n")
 
-                # Display the first file as the original
+                # Keep the first file as the original
                 fobj.write("Original File: " + value[0] + "\n")
 
-                # Display the remaining files as duplicates
+                # Record the remaining duplicate files
                 for subvalue in value[1:]:
                     fobj.write("Duplicate File: " + subvalue + "\n")
                     TotalDuplicates += 1
@@ -138,7 +125,6 @@ def GenerateDuplicateReport(DirectoryName, Result):
 
                 GroupCount += 1
 
-            # Write final statistics
             fobj.write("Total Duplicate Groups: " + str(TotalGroups) + "\n")
             fobj.write("Total Duplicate Files: " + str(TotalDuplicates) + "\n")
 
@@ -150,38 +136,46 @@ def GenerateDuplicateReport(DirectoryName, Result):
         print("Error:", e)
 
 
-def DeleteDuplicate(DirectoryName):
-    """Display duplicate files and generate a report."""
+def DeleteDuplicate(DirectoryName, Result):
+    """Delete duplicate files after user confirmation."""
 
-    # Find duplicate files
-    MyDict = FindDuplicate(DirectoryName)
+    TotalDeleted = 0
+    TotalFailed = 0
 
-    # Stop if the directory is invalid
-    if MyDict is None:
+    print("\nDuplicate files available for deletion:\n")
+
+    # Display files that can be deleted
+    for value in Result:
+        for subvalue in value[1:]:
+            print(subvalue)
+
+    print("\nThe first file in each group will be retained.")
+
+    # Ask the user for confirmation
+    Choice = input("\nDo you want to delete duplicate files? (yes/no): ")
+
+    if Choice.lower() != "yes":
+        print("Deletion cancelled. No files were deleted.")
         return
 
-    # Select groups containing more than one file
-    Result = list(filter(lambda x: len(x) > 1, MyDict.values()))
-
-    TotalDuplicates = 0
-
-    # Display duplicate file paths
+    # Delete duplicate copies while retaining one original
     for value in Result:
 
-        # Keep the first file and identify the remaining copies
         for subvalue in value[1:]:
-            print("Duplicate found:", subvalue)
-            TotalDuplicates += 1
 
-    print("Total duplicate groups found:", len(Result))
-    print("Total duplicate files found:", TotalDuplicates)
+            try:
+                os.remove(subvalue)
+                print("Deleted:", subvalue)
+                TotalDeleted += 1
 
-    # Generate a report if duplicates are found
-    if len(Result) > 0:
-        GenerateDuplicateReport(DirectoryName, Result)
-    else:
-        print("No duplicate files found.")
-        print("Report not generated.")
+            except OSError as e:
+                print("Unable to delete:", subvalue)
+                print("Error:", e)
+                TotalFailed += 1
+
+    print("\nDeletion Summary")
+    print("Total files deleted:", TotalDeleted)
+    print("Total files not deleted:", TotalFailed)
 
 
 def main():
@@ -195,8 +189,42 @@ def main():
 
     if len(sys.argv) == 2:
 
-        # Scan the directory provided by the user
-        DeleteDuplicate(sys.argv[1])
+        DirectoryName = sys.argv[1]
+
+        # Find duplicate files
+        MyDict = FindDuplicate(DirectoryName)
+
+        if MyDict is not None:
+
+            # Select groups containing more than one file
+            Result = list(
+                filter(lambda x: len(x) > 1, MyDict.values())
+            )
+
+            TotalDuplicates = 0
+
+            # Display duplicate file paths
+            for value in Result:
+                for subvalue in value[1:]:
+                    print("Duplicate found:", subvalue)
+                    TotalDuplicates += 1
+
+            print("\nTotal duplicate groups found:", len(Result))
+            print("Total duplicate files found:", TotalDuplicates)
+
+            if len(Result) > 0:
+
+                # Generate the duplicate report before deletion
+                GenerateDuplicateReport(DirectoryName, Result)
+
+                # Ask the user whether to delete duplicates
+                DeleteDuplicate(DirectoryName, Result)
+
+            else:
+                print("No duplicate files found.")
+
+        else:
+            print("Unable to scan the specified directory.")
 
     else:
         print("Invalid number of arguments")
