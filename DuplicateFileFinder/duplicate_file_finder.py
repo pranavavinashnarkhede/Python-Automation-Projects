@@ -9,19 +9,17 @@ def CalculateCheckSum(FileName):
 
     try:
         # Open the file in binary read mode
-        fobj = open(FileName, "rb")
+        with open(FileName, "rb") as fobj:
 
-        # Create an MD5 hash object
-        hobj = hashlib.md5()
+            # Create an MD5 hash object
+            hobj = hashlib.md5()
 
-        # Read the file in chunks of 1024 bytes
-        Buffer = fobj.read(1024)
-
-        while len(Buffer) > 0:
-            hobj.update(Buffer)
+            # Read the file in chunks of 1024 bytes
             Buffer = fobj.read(1024)
 
-        fobj.close()
+            while len(Buffer) > 0:
+                hobj.update(Buffer)
+                Buffer = fobj.read(1024)
 
         # Return the calculated checksum
         return hobj.hexdigest()
@@ -79,6 +77,7 @@ def FindDuplicate(DirectoryName):
 
                 Checksum = CalculateCheckSum(FilePath)
 
+                # Skip files that could not be read
                 if Checksum is None:
                     continue
 
@@ -91,22 +90,78 @@ def FindDuplicate(DirectoryName):
     return Duplicate
 
 
-def GenerateDuplicateReport(DirectoryName, Result):
-    """Generate a report containing duplicate file information."""
+def DeleteDuplicate(Result):
+    """Delete duplicate files after user confirmation."""
 
+    # Store deletion results
+    DeletionResults = {
+        "Deleted": [],
+        "Failed": [],
+        "Status": "Cancelled"
+    }
+
+    print("\nDuplicate files available for deletion:\n")
+
+    # Display files that can be deleted
+    for value in Result:
+        for subvalue in value[1:]:
+            print(subvalue)
+
+    print("\nThe first file in each group will be retained.")
+
+    # Ask the user for confirmation
+    Choice = input("\nDo you want to delete duplicate files? (yes/no): ")
+
+    if Choice.lower() != "yes":
+        print("Deletion cancelled. No files were deleted.")
+        return DeletionResults
+
+    DeletionResults["Status"] = "Completed"
+
+    # Delete duplicate copies while retaining one original
+    for value in Result:
+
+        for subvalue in value[1:]:
+
+            try:
+                os.remove(subvalue)
+
+                print("Deleted:", subvalue)
+                DeletionResults["Deleted"].append(subvalue)
+
+            except OSError as e:
+                print("Unable to delete:", subvalue)
+                print("Error:", e)
+
+                DeletionResults["Failed"].append(subvalue)
+
+    print("\nDeletion Summary")
+    print("Total files deleted:", len(DeletionResults["Deleted"]))
+    print("Total files failed:", len(DeletionResults["Failed"]))
+
+    return DeletionResults
+
+
+def GenerateDuplicateReport(DirectoryName, Result, DeletionResults):
+    """Generate a report containing duplicate and deletion information."""
+
+    # Generate a timestamp for the report filename
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+
     ReportFileName = "DuplicateReport_%s.txt" % timestamp
 
     TotalGroups = len(Result)
     TotalDuplicates = 0
 
     try:
+        # Create the report file
         with open(ReportFileName, "w", encoding="utf-8") as fobj:
 
             fobj.write("Duplicate File Finder Report\n")
             fobj.write("Directory: " + os.path.abspath(DirectoryName) + "\n")
             fobj.write("=" * 70 + "\n\n")
 
+            # Write duplicate group information
             GroupCount = 1
 
             for value in Result:
@@ -125,57 +180,38 @@ def GenerateDuplicateReport(DirectoryName, Result):
 
                 GroupCount += 1
 
+            # Write duplicate statistics
+            fobj.write("========== DUPLICATE STATISTICS ==========\n\n")
             fobj.write("Total Duplicate Groups: " + str(TotalGroups) + "\n")
             fobj.write("Total Duplicate Files: " + str(TotalDuplicates) + "\n")
 
-        print("Duplicate report generated successfully.")
+            # Write deletion results
+            fobj.write("\n========== DELETION SUMMARY ==========\n\n")
+
+            fobj.write("Deletion Status: " + DeletionResults["Status"] + "\n\n")
+
+            fobj.write("Successfully Deleted Files:\n")
+
+            for FilePath in DeletionResults["Deleted"]:
+                fobj.write(FilePath + "\n")
+
+            fobj.write("\nFailed Deletion Files:\n")
+
+            for FilePath in DeletionResults["Failed"]:
+                fobj.write(FilePath + "\n")
+
+            fobj.write("\nTotal Files Deleted: " +
+                       str(len(DeletionResults["Deleted"])) + "\n")
+
+            fobj.write("Total Files Failed: " +
+                       str(len(DeletionResults["Failed"])) + "\n")
+
+        print("\nDuplicate report generated successfully.")
         print("Report saved as:", ReportFileName)
 
     except OSError as e:
         print("Unable to create duplicate report.")
         print("Error:", e)
-
-
-def DeleteDuplicate(DirectoryName, Result):
-    """Delete duplicate files after user confirmation."""
-
-    TotalDeleted = 0
-    TotalFailed = 0
-
-    print("\nDuplicate files available for deletion:\n")
-
-    # Display files that can be deleted
-    for value in Result:
-        for subvalue in value[1:]:
-            print(subvalue)
-
-    print("\nThe first file in each group will be retained.")
-
-    # Ask the user for confirmation
-    Choice = input("\nDo you want to delete duplicate files? (yes/no): ")
-
-    if Choice.lower() != "yes":
-        print("Deletion cancelled. No files were deleted.")
-        return
-
-    # Delete duplicate copies while retaining one original
-    for value in Result:
-
-        for subvalue in value[1:]:
-
-            try:
-                os.remove(subvalue)
-                print("Deleted:", subvalue)
-                TotalDeleted += 1
-
-            except OSError as e:
-                print("Unable to delete:", subvalue)
-                print("Error:", e)
-                TotalFailed += 1
-
-    print("\nDeletion Summary")
-    print("Total files deleted:", TotalDeleted)
-    print("Total files not deleted:", TotalFailed)
 
 
 def main():
@@ -205,6 +241,7 @@ def main():
 
             # Display duplicate file paths
             for value in Result:
+
                 for subvalue in value[1:]:
                     print("Duplicate found:", subvalue)
                     TotalDuplicates += 1
@@ -214,11 +251,13 @@ def main():
 
             if len(Result) > 0:
 
-                # Generate the duplicate report before deletion
-                GenerateDuplicateReport(DirectoryName, Result)
+                # Delete duplicates after user confirmation
+                DeletionResults = DeleteDuplicate(Result)
 
-                # Ask the user whether to delete duplicates
-                DeleteDuplicate(DirectoryName, Result)
+                # Generate report with deletion results
+                GenerateDuplicateReport(
+                    DirectoryName, Result, DeletionResults
+                )
 
             else:
                 print("No duplicate files found.")
