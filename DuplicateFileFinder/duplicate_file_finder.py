@@ -97,7 +97,8 @@ def DeleteDuplicate(Result):
     DeletionResults = {
         "Deleted": [],
         "Failed": [],
-        "Status": "Cancelled"
+        "Status": "Cancelled",
+        "SpaceRecovered": 0
     }
 
     print("\nDuplicate files available for deletion:\n")
@@ -124,10 +125,19 @@ def DeleteDuplicate(Result):
         for subvalue in value[1:]:
 
             try:
+                # Get file size before deleting the file
+                FileSize = os.path.getsize(subvalue)
+
+                # Delete the duplicate file
                 os.remove(subvalue)
 
                 print("Deleted:", subvalue)
+
+                # Store successfully deleted file information
                 DeletionResults["Deleted"].append(subvalue)
+
+                # Calculate total recovered storage
+                DeletionResults["SpaceRecovered"] += FileSize
 
             except OSError as e:
                 print("Unable to delete:", subvalue)
@@ -135,9 +145,16 @@ def DeleteDuplicate(Result):
 
                 DeletionResults["Failed"].append(subvalue)
 
+    # Display deletion summary
     print("\nDeletion Summary")
     print("Total files deleted:", len(DeletionResults["Deleted"]))
     print("Total files failed:", len(DeletionResults["Failed"]))
+
+    print(
+        "Storage recovered:",
+        round(DeletionResults["SpaceRecovered"] / (1024 * 1024), 2),
+        "MB"
+    )
 
     return DeletionResults
 
@@ -200,11 +217,24 @@ def GenerateDuplicateReport(DirectoryName, Result, DeletionResults):
             for FilePath in DeletionResults["Failed"]:
                 fobj.write(FilePath + "\n")
 
+            # Calculate recovered storage in different units
+            RecoveredBytes = DeletionResults["SpaceRecovered"]
+            RecoveredKB = RecoveredBytes / 1024
+            RecoveredMB = RecoveredBytes / (1024 * 1024)
+            RecoveredGB = RecoveredBytes / (1024 * 1024 * 1024)
+
+            # Write final deletion statistics
             fobj.write("\nTotal Files Deleted: " +
                        str(len(DeletionResults["Deleted"])) + "\n")
 
             fobj.write("Total Files Failed: " +
                        str(len(DeletionResults["Failed"])) + "\n")
+
+            fobj.write("\n========== STORAGE RECOVERY ==========\n\n")
+            fobj.write("Recovered Storage: " + str(RecoveredBytes) + " bytes\n")
+            fobj.write("Recovered Storage: " + str(round(RecoveredKB, 2)) + " KB\n")
+            fobj.write("Recovered Storage: " + str(round(RecoveredMB, 2)) + " MB\n")
+            fobj.write("Recovered Storage: " + str(round(RecoveredGB, 4)) + " GB\n")
 
         print("\nDuplicate report generated successfully.")
         print("Report saved as:", ReportFileName)
@@ -254,7 +284,7 @@ def main():
                 # Delete duplicates after user confirmation
                 DeletionResults = DeleteDuplicate(Result)
 
-                # Generate report with deletion results
+                # Generate report with deletion and storage results
                 GenerateDuplicateReport(
                     DirectoryName, Result, DeletionResults
                 )
